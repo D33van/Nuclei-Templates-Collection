@@ -1,0 +1,85 @@
+id: sql-xss-scanner
+info:
+  name: SQL Injection and XSS Vulnerability Scanner
+  author: SecurityFounder
+  severity: high
+  description: Detects SQL Injection and XSS vulnerabilities
+  tags:
+    - vulnerability
+    - sqli
+    - xss
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+      - "{{BaseURL}}/?id=1"
+      - "{{BaseURL}}/?page=1"
+      - "{{BaseURL}}/?search=test"
+    
+    # SQL Injection Tests
+    payloads:
+      injection:
+        - "'"
+        - "1' OR '1'='1"
+        - "1 OR 1=1"
+        - "' OR '1'='1"
+        - "\" OR \"1\"=\"1"
+        - "1' ORDER BY 1--"
+        - "1' UNION SELECT 1,2,3--"
+      
+    attack: sniper
+    part: query
+    unsafe: true
+    
+    matchers-condition: or
+    matchers:
+      # SQL Error Messages
+      - type: word
+        name: sql-errors
+        words:
+          - "SQL syntax"
+          - "mysql_fetch"
+          - "ORA-"
+          - "PostgreSQL"
+          - "SQLite"
+          - "Unclosed quotation mark"
+        condition: or
+        part: body
+      
+      # Server Error Status
+      - type: status
+        status:
+          - 500
+          - 503
+
+  # XSS Tests
+  - method: GET
+    path:
+      - "{{BaseURL}}/?id=xss"
+      - "{{BaseURL}}/?search=xss"
+      - "{{BaseURL}}/?q=xss"
+      - "{{BaseURL}}/?page=xss"
+    
+    payloads:
+      xss:
+        - "<script>alert(1)</script>"
+        - "<img src=x onerror=alert(1)>"
+        - "<svg onload=alert(1)>"
+        - "javascript:alert(1)"
+        - "\"><script>alert(1)</script>"
+        - "'><script>alert(1)</script>"
+    
+    attack: sniper
+    part: query
+    unsafe: true
+    
+    matchers:
+      - type: word
+        name: xss-reflection
+        words:
+          - "<script>alert(1)</script>"
+          - "<img src=x onerror=alert(1)>"
+          - "<svg onload=alert(1)>"
+        condition: or
+        part: body
